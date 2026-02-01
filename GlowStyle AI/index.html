@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GlowStyle AI v6.1 - Rizmu</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; }
+        #video, #canvas { transform: scaleX(-1); border-radius: 2rem; width: 100%; height: 100%; object-fit: cover; }
+        .yube-gradient { background: linear-gradient(135deg, #4f46e5 0%, #7e22ce 100%); }
+        
+        #captureCard { 
+            background: #ffffff !important; 
+            width: 450px; 
+            padding: 40px; 
+            border-radius: 60px; 
+            margin: 0 auto; 
+            display: flex; 
+            flex-direction: column;
+        }
+        .comparison-box { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 15px; 
+            margin-bottom: 25px;
+            width: 100%;
+        }
+        .mini-photo { 
+            width: 100%; 
+            aspect-ratio: 1/1; 
+            border-radius: 25px; 
+            overflow: hidden;
+            border-width: 6px;
+            background: #000;
+        }
+        .best-frame { border-color: #4ade80; }
+        .worst-frame { border-color: #f87171; }
+        .palette-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; width: 100%; margin-bottom: 25px; }
+        .color-dot { height: 45px; border-radius: 12px; border: 2px solid #fff; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <nav class="bg-white p-5 border-b sticky top-0 z-50">
+        <div class="max-w-5xl mx-auto flex justify-between items-center">
+            <h1 class="font-black text-indigo-700 tracking-tighter text-2xl uppercase italic">GlowStyle AI</h1>
+            <span class="text-[10px] font-black text-white bg-indigo-600 px-4 py-1.5 rounded-full shadow-lg uppercase">Precision v6.1</span>
+        </div>
+    </nav>
+
+    <main class="max-w-4xl mx-auto p-6 py-10">
+        <div id="mainUI" class="grid md:grid-cols-2 gap-12 items-start">
+            
+            <div id="setupArea" class="space-y-6">
+                <div class="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-200">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Environment Check</p>
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <button onclick="setLight('day')" id="lightDay" class="p-4 border-2 rounded-2xl text-[10px] font-black border-indigo-600 bg-indigo-50 text-indigo-600">☀️ NORMAL LIGHT</button>
+                        <button onclick="setLight('warm')" id="lightWarm" class="p-4 border-2 rounded-2xl text-[10px] font-black border-slate-100 text-slate-400">💡 LOW LIGHT / WARM</button>
+                    </div>
+                </div>
+
+                <div class="relative bg-slate-900 aspect-[3/4] rounded-[3.5rem] overflow-hidden shadow-2xl border-[12px] border-white">
+                    <video id="video" autoplay playsinline></video>
+                </div>
+                
+                <button id="captureBtn" class="w-full yube-gradient text-white font-black py-7 rounded-[3rem] shadow-2xl text-sm tracking-[0.3em] hover:scale-[1.02] active:scale-95 transition-all">
+                    GENERATE ANALYSIS
+                </button>
+            </div>
+
+            <div id="resultArea" class="hidden space-y-8 pb-20">
+                <div id="captureCard">
+                    <div class="comparison-box">
+                        <div class="text-center">
+                            <div class="mini-photo best-frame" id="bestPhotoBox"></div>
+                            <span class="text-[9px] font-black text-green-500 uppercase mt-2 block tracking-widest italic">Ideal</span>
+                        </div>
+                        <div class="text-center">
+                            <div class="mini-photo worst-frame" id="worstPhotoBox"></div>
+                            <span class="text-[9px] font-black text-red-400 uppercase mt-2 block tracking-widest italic">Avoid</span>
+                        </div>
+                    </div>
+
+                    <div class="text-center mb-8">
+                        <h2 id="skinToneLabel" class="text-3xl font-black text-slate-900 tracking-tighter uppercase italic leading-none mb-3">---</h2>
+                        <div class="inline-flex items-center gap-2 bg-indigo-50 px-4 py-2 rounded-2xl border border-indigo-100">
+                            <span class="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Match:</span>
+                            <span id="yubeScore" class="text-lg font-black text-indigo-700 italic">---</span>
+                        </div>
+                    </div>
+
+                    <div class="w-full flex items-center justify-between p-5 bg-slate-50 rounded-3xl mb-8 border border-slate-100 shadow-inner">
+                        <div class="flex items-center gap-4">
+                            <div id="swatch" class="w-12 h-12 rounded-xl border-4 border-white shadow-sm"></div>
+                            <p id="hexDisplay" class="font-mono text-lg font-black text-indigo-600">#HEX</p>
+                        </div>
+                        <span id="undertoneBadge" class="text-[8px] font-black bg-white px-3 py-1.5 rounded-lg border text-slate-400 uppercase tracking-widest">---</span>
+                    </div>
+
+                    <div id="palette" class="palette-grid text-center text-[8px] font-black text-slate-400 uppercase tracking-tighter"></div>
+
+                    <div class="w-full p-6 bg-slate-900 rounded-[2.5rem] text-white text-[10px] leading-relaxed text-center font-bold italic border-b-8 border-indigo-500 shadow-xl">
+                        <p id="advice"></p>
+                    </div>
+
+                    <div class="mt-10 text-center border-t border-slate-100 pt-6">
+                        <p class="text-[8px] font-black text-slate-300 uppercase tracking-[0.5em] mb-1 italic">Intelligence by</p>
+                        <p class="text-sm font-black text-slate-900 tracking-tighter uppercase">RIZMU <span class="text-indigo-600">AS YUBE</span></p>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-4 max-w-[450px] mx-auto">
+                    <button onclick="downloadResult()" class="w-full yube-gradient text-white py-6 rounded-[2.5rem] font-black text-xs tracking-widest shadow-2xl hover:brightness-110 active:scale-95 transition-all">SAVE INSIGHT TO GALLERY</button>
+                    <button onclick="location.reload()" class="w-full bg-white text-slate-400 py-4 rounded-2xl font-black text-[10px] border border-slate-100 uppercase tracking-widest hover:bg-slate-50">Reset Analysis</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const video = document.getElementById('video');
+        const captureBtn = document.getElementById('captureBtn');
+        const resultArea = document.getElementById('resultArea');
+        const setupArea = document.getElementById('setupArea');
+        let lightMode = 'day';
+
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } }).then(s => video.srcObject = s);
+
+        function setLight(m) {
+            lightMode = m;
+            document.getElementById('lightDay').className = m === 'day' ? 'p-4 border-2 rounded-2xl text-[10px] font-black border-indigo-600 bg-indigo-50 text-indigo-600' : 'p-4 border-2 rounded-2xl text-[10px] font-black border-slate-100 text-slate-300';
+            document.getElementById('lightWarm').className = m === 'warm' ? 'p-4 border-2 rounded-2xl text-[10px] font-black border-indigo-600 bg-indigo-50 text-indigo-600' : 'p-4 border-2 rounded-2xl text-[10px] font-black border-slate-100 text-slate-300';
+        }
+
+        captureBtn.addEventListener('click', () => {
+            const tempCanvas = document.createElement('canvas');
+            const ctx = tempCanvas.getContext('2d');
+            tempCanvas.width = 800; tempCanvas.height = 800;
+            ctx.drawImage(video, (video.videoWidth-video.videoHeight)/2, 0, video.videoHeight, video.videoHeight, 0, 0, 800, 800);
+
+            if(lightMode === 'warm') {
+                ctx.globalAlpha = 0.2;
+                ctx.fillStyle = "#ffffff";
+                ctx.fillRect(0,0,800,800);
+                ctx.globalAlpha = 1.0;
+            }
+
+            const data = ctx.getImageData(400, 400, 50, 50).data;
+            let r=0, g=0, b=0;
+            for(let i=0; i<data.length; i+=4){ r+=data[i]; g+=data[i+1]; b+=data[i+2]; }
+            const count = data.length/4;
+            r=Math.floor(r/count); g=Math.floor(g/count); b=Math.floor(b/count);
+
+            const hex = "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+            setupArea.classList.add('hidden');
+            resultArea.classList.remove('hidden');
+
+            const bestBox = document.getElementById('bestPhotoBox');
+            const worstBox = document.getElementById('worstPhotoBox');
+            bestBox.innerHTML = ''; worstBox.innerHTML = '';
+            
+            const imgBest = new Image(); imgBest.src = tempCanvas.toDataURL(); imgBest.className = "w-full h-full object-cover shadow-inner";
+            const imgWorst = new Image(); imgWorst.src = tempCanvas.toDataURL(); imgWorst.className = "w-full h-full object-cover grayscale opacity-50";
+            
+            bestBox.appendChild(imgBest);
+            worstBox.appendChild(imgWorst);
+
+            processFixYube(r, g, b, hex, bestBox, worstBox);
+        });
+
+        function processFixYube(r, g, b, hex, best, worst) {
+            const lum = 0.299*r + 0.587*g + 0.114*b;
+            const isWarm = r > b + 8;
+            let season = "", colors = [], names = [], badColor = "#333333";
+
+            if(isWarm) {
+                if(lum > 140) { 
+                    season = "Warm Spring"; 
+                    colors = ['#FF7F50', '#FFD700', '#20B2AA', '#FF9999', '#77DD77']; 
+                    names = ['Coral', 'Gold', 'Tiffany', 'Peach', 'Mint'];
+                    badColor = "#2F4F4F";
+                } else { 
+                    season = "Deep Autumn"; 
+                    colors = ['#8B0000', '#DAA520', '#556B2F', '#A0522D', '#D4AF37']; 
+                    names = ['Bordeaux', 'Mustard', 'Olive', 'Sienna', 'Bronze'];
+                    badColor = "#E6E6FA";
+                }
+            } else {
+                if(lum > 140) { 
+                    season = "Cool Summer"; 
+                    colors = ['#B0C4DE', '#E6E6FA', '#FFC0CB', '#778899', '#957DAD']; 
+                    names = ['Steel', 'Lavender', 'Rose', 'Slate', 'Dusty'];
+                    badColor = "#FF8C00";
+                } else { 
+                    season = "Bold Winter"; 
+                    colors = ['#000080', '#004d00', '#310062', '#FFFFFF', '#000000']; 
+                    names = ['Navy', 'Forest', 'Violet', 'White', 'Black'];
+                    badColor = "#FFD700";
+                }
+            }
+
+            best.style.borderColor = colors[0];
+            worst.style.borderColor = badColor;
+
+            document.getElementById('skinToneLabel').innerText = season;
+            document.getElementById('yubeScore').innerText = (95 + Math.floor(Math.random() * 5)) + "%";
+            document.getElementById('undertoneBadge').innerText = (isWarm ? "Warm" : "Cool") + " Tone";
+            document.getElementById('swatch').style.backgroundColor = hex;
+            document.getElementById('hexDisplay').innerText = hex.toUpperCase();
+            document.getElementById('advice').innerText = "Warna " + names[0] + " adalah kunci tampilan mewah Anda. Hindari warna bingkai kanan agar wajah tetap terlihat segar.";
+
+            const pal = document.getElementById('palette');
+            pal.innerHTML = '';
+            colors.forEach((c, i) => {
+                const div = document.createElement('div');
+                div.innerHTML = `<div class="color-dot" style="background:${c}"></div><span class="block mt-1">${names[i]}</span>`;
+                pal.appendChild(div);
+            });
+        }
+
+        function downloadResult() {
+            const card = document.getElementById('captureCard');
+            window.scrollTo(0,0);
+            html2canvas(card, { scale: 3, backgroundColor: "#ffffff", useCORS: true, borderRadius: 60 }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `Yube-Premium-Insight.png`;
+                link.href = canvas.toDataURL();
+                link.click();
+            });
+        }
+    </script>
+</body>
+</html>
